@@ -19,13 +19,15 @@ module tt_um_example (
     reg [7:0] load_reg;
     reg [7:0] count_q;
 
+    // Shift register: MSB-first, always active
     always @(posedge sclk or negedge rst_n) begin
         if (!rst_n)
             load_reg <= 8'h00;
-        else if (ena)
+        else
             load_reg <= {sdi, load_reg[7:1]};
     end
 
+    // Counter: async reset, sync load, gated by ena
     always @(posedge clk or negedge rst_n) begin
         if (!rst_n)
             count_q <= 8'h00;
@@ -37,7 +39,7 @@ module tt_um_example (
         end
     end
 
-    assign uo_out = oe ? count_q : 8'hZZ;
+    assign uo_out  = oe ? count_q : 8'hZZ;
     assign uio_out = 8'h00;
     assign uio_oe  = 8'h00;
 

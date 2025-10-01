@@ -1,4 +1,3 @@
-# SPDX-FileCopyrightText: © 2024 Tiny Tapeout
 # SPDX-License-Identifier: Apache-2.0
 
 import cocotb
@@ -12,27 +11,21 @@ def bit(val, n):
     return (val >> n) & 1
 
 async def shift_msb_first(dut, byte):
-    """Shift 8 bits MSB-first into ui_in[2] using ui_in[3] as sclk."""
     for i in range(7, -1, -1):
-        # drive sdi = ui_in[2]
-        dut.ui_in.value = (int(dut.ui_in.value) & 0b11111011) | (bit(byte, i) << 2)
-        # sclk = 0
-        dut.ui_in.value = int(dut.ui_in.value) & 0b11110111
+        dut.ui_in.value = (int(dut.ui_in.value) & 0b11111011) | (bit(byte, i) << 2)  # sdi=ui_in[2]
+        dut.ui_in.value = int(dut.ui_in.value) & 0b11110111  # sclk=0
         await Timer(SCLK_PERIOD // 2, units="ns")
-        # sclk = 1
-        dut.ui_in.value = int(dut.ui_in.value) | 0b1000
+        dut.ui_in.value = int(dut.ui_in.value) | 0b1000      # sclk=1
         await Timer(SCLK_PERIOD // 2, units="ns")
-    # leave sclk low
-    dut.ui_in.value = int(dut.ui_in.value) & 0b11110111
+    dut.ui_in.value = int(dut.ui_in.value) & 0b11110111     # leave sclk low
 
 @cocotb.test()
 async def test_project(dut):
     dut._log.info("Start")
 
-    # start main clock
     cocotb.start_soon(Clock(dut.clk, CLK_PERIOD, units="ns").start())
 
-    # reset
+    # Reset
     dut.ena.value = 1
     dut.ui_in.value = 0
     dut.uio_in.value = 0
@@ -41,26 +34,24 @@ async def test_project(dut):
     dut.rst_n.value = 1
     await RisingEdge(dut.clk)
 
-    # enable OE so outputs are driven
+    # Enable OE so outputs are driven
     dut.ui_in.value = int(dut.ui_in.value) | 0b10
     await RisingEdge(dut.clk)
-
-    # after reset, counter should be 0
     assert int(dut.uo_out.value) == 0
 
     # ------------------------------------------------------
     # Load 0xA5 into counter
     # ------------------------------------------------------
     val = 0xA5
+    dut.ena.value = 1  # ensure ena high during shifting
     await shift_msb_first(dut, val)
-    # set load=1 (ui_in[0])
-    dut.ui_in.value = int(dut.ui_in.value) | 0b1
+
+    dut.ui_in.value = int(dut.ui_in.value) | 0b1   # load=1
     await RisingEdge(dut.clk)
-    dut.ui_in.value = int(dut.ui_in.value) & ~0b1
+    dut.ui_in.value = int(dut.ui_in.value) & ~0b1  # load=0
     await RisingEdge(dut.clk)
 
-    # ensure OE=1 before checking
-    dut.ui_in.value = int(dut.ui_in.value) | 0b10
+    dut.ui_in.value = int(dut.ui_in.value) | 0b10  # oe=1
     await RisingEdge(dut.clk)
     assert int(dut.uo_out.value) == val
 
