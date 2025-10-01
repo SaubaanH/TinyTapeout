@@ -1,7 +1,7 @@
 // TinyTapeout Sky130 – 8-bit programmable counter
 // Features: async reset (active-low), synchronous load, tri-state outputs on uio_*
 
-module tt_um_saubaanh_counter (
+module tt_um_example (
     input            clk,      // clock
     input            rst_n,    // asynchronous, active-low reset
     input            ena,      // high when this project is selected (TT mux)
