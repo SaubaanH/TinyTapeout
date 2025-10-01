@@ -19,12 +19,12 @@ module tt_um_example (
     reg [7:0] load_reg;
     reg [7:0] count_q;
 
-    // Shift register: MSB-first, always active
+    // Shift register: MSB-first (shift left, sdi into LSB)
     always @(posedge sclk or negedge rst_n) begin
         if (!rst_n)
             load_reg <= 8'h00;
         else
-            load_reg <= {sdi, load_reg[7:1]};
+            load_reg <= {load_reg[6:0], sdi};
     end
 
     // Counter: async reset, sync load, gated by ena
