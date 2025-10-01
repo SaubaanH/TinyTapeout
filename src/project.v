@@ -1,46 +1,43 @@
-module tt_um_example (
-    input  wire clk,
-    input  wire rst_n,
-    input  wire ena,
-    input  wire [7:0] ui_in,
-    output wire [7:0] uo_out,
-    input  wire [7:0] uio_in,
-    output wire [7:0] uio_out,
-    output wire [7:0] uio_oe
+// TinyTapeout Sky130 – 8-bit programmable counter
+// Features: async reset (active-low), synchronous load, tri-state outputs on uio_*
+
+module project (
+    input            clk,      // clock
+    input            rst_n,    // asynchronous, active-low reset
+    input            ena,      // high when this project is selected (TT mux)
+    input      [7:0] ui_in,    // dedicated inputs  (load value)
+    output     [7:0] uo_out,   // dedicated outputs (mirrors count for easy viewing)
+    input      [7:0] uio_in,   // bidirectional inputs
+    output     [7:0] uio_out,  // bidirectional outputs
+    output     [7:0] uio_oe    // bidirectional output enables (1=drive, 0=high-Z)
 );
 
-    wire load = ui_in[0];
-    wire oe   = ui_in[1];
-    wire sdi  = ui_in[2];
-    wire sclk = ui_in[3];
-    wire up   = ui_in[4];
-    wire en   = ui_in[5];
+    // Internal state
+    reg [7:0] count;
 
-    reg [7:0] load_reg;
-    reg [7:0] count_q;
+    // Control signals from uio_in
+    wire load     = uio_in[0];
+    wire count_en = uio_in[1];
+    wire drive_en = uio_in[3];
 
-    // Shift register: MSB-first (shift left, sdi into LSB)
-    always @(posedge sclk or negedge rst_n) begin
-        if (!rst_n)
-            load_reg <= 8'h00;
-        else
-            load_reg <= {load_reg[6:0], sdi};
-    end
-
-    // Counter: async reset, sync load, gated by ena
+    // Asynchronous reset, synchronous load, synchronous increment
     always @(posedge clk or negedge rst_n) begin
-        if (!rst_n)
-            count_q <= 8'h00;
-        else if (ena) begin
-            if (load)
-                count_q <= load_reg;
-            else if (en)
-                count_q <= up ? count_q + 8'd1 : count_q - 8'd1;
+        if (!rst_n) begin
+            count <= 8'h00;
+        end else if (ena) begin
+            if (load) begin
+                count <= ui_in;            // sync load from ui_in on next clk edge
+            end else if (count_en) begin
+                count <= count + 8'd1;     // increment when enabled
+            end
         end
     end
 
-    assign uo_out  = oe ? count_q : 8'hZZ;
-    assign uio_out = 8'h00;
-    assign uio_oe  = 8'h00;
+    // Always-on mirror of the counter to dedicated outputs (helps in bring-up & tests)
+    assign uo_out  = count;
+
+    // Tri-stateable copy on the uio bus
+    assign uio_out = count;
+    assign uio_oe  = {8{drive_en}};  // all 8 bits drive only when DRIVE_EN=1
 
 endmodule
