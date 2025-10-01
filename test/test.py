@@ -39,8 +39,11 @@ async def test_project(dut):
     await ClockCycles(dut.clk, 5)
     dut.rst_n.value = 1
     await RisingEdge(dut.clk)
-    assert int(dut.uo_out.value) == 0
 
+    if (int(dut.ui_in.value) & 0b10) == 0:
+        assert str(dut.uo_out.value) == "zzzzzzzz"
+    else:
+        assert int(dut.uo_out.value) == 0
     # Load 0xA5 into counter
     val = 0xA5
     await shift_msb_first(dut, val)
