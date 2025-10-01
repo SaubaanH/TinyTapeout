@@ -5,23 +5,36 @@
 
 `default_nettype none
 
-module tt_um_example (
-    input  wire [7:0] ui_in,    // Dedicated inputs
-    output wire [7:0] uo_out,   // Dedicated outputs
-    input  wire [7:0] uio_in,   // IOs: Input path
-    output wire [7:0] uio_out,  // IOs: Output path
-    output wire [7:0] uio_oe,   // IOs: Enable path (active high: 0=input, 1=output)
-    input  wire       ena,      // always 1 when the design is powered, so you can ignore it
-    input  wire       clk,      // clock
-    input  wire       rst_n     // reset_n - low to reset
+module tt_um_example (  
+    input  wire [7:0] io_in,
+    output wire [7:0] io_out,
+    output wire [7:0] io_oeb
 );
+   
+    wire clk     = io_in[0];
+    wire arst_n  = io_in[1];
+    wire load    = io_in[2];
+    wire oe      = io_in[3];
+    wire sdi     = io_in[4];
+    wire sclk    = io_in[5];
+    wire up      = io_in[6];
+    wire en      = io_in[7];
 
-  // All output pins must be assigned. If not used, assign to 0.
-  assign uo_out  = ui_in + uio_in;  // Example: ou_out is the sum of ui_in and uio_in
-  assign uio_out = 0;
-  assign uio_oe  = 0;
+    reg  [7:0] load_reg;
+    reg  [7:0] count_q;
 
-  // List all unused inputs to prevent warnings
-  wire _unused = &{ena, clk, rst_n, 1'b0};
+    always @(posedge sclk or negedge arst_n) begin
+        if (!arst_n) load_reg <= 8'h00;
+        else         load_reg <= {sdi, load_reg[7:1]}; 
+    end
 
+    always @(posedge clk or negedge arst_n) begin
+        if (!arst_n)       count_q <= 8'h00;
+        else if (load)     count_q <= load_reg;               
+        else if (en)       count_q <= up ? count_q + 8'd1
+                                         : count_q - 8'd1;    
+    end
+
+    assign io_out = count_q;
+    assign io_oeb = {8{~oe}}; 
 endmodule
